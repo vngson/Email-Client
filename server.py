@@ -63,58 +63,58 @@
 #     mail_server = MailServer(SERVER_ADDRESS)
 #     mail_server.start_server()
 
-# # server.py
-import socket
-import threading
+# server.py
+# import socket
+# import threading
 
-from config import SERVER_ADDRESS, SMTP_PORT, POP3_PORT, USERNAME, FILTER_RULES
+# from config import SERVER_ADDRESS, SMTP_PORT, POP3_PORT, USERNAME, FILTER_RULES
 
-def handle_client(client_socket):
-    try:
-        # Send welcome message
-        client_socket.send(b"220 Welcome to the SMTP server\r\n")
+# def handle_client(client_socket):
+#     try:
+#         # Send welcome message
+#         client_socket.send(b"220 Welcome to the SMTP server\r\n")
 
-        while True:
-            command = client_socket.recv(1024).decode()
-            if not command:
-                break
+#         while True:
+#             command = client_socket.recv(1024).decode()
+#             if not command:
+#                 break
 
-            if command.startswith("EHLO"):
-                client_socket.send(b"250 Hello\r\n")
-            elif command.startswith("MAIL FROM"):
-                client_socket.send(b"250 OK\r\n")
-            elif command.startswith("RCPT TO"):
-                client_socket.send(b"250 OK\r\n")
-            elif command.startswith("DATA"):
-                client_socket.send(b"354 Start mail input; end with <CRLF>.<CRLF>\r\n")
-                data = client_socket.recv(1024).decode()
-                print("Received email data:", data)
-                client_socket.send(b"250 OK\r\n")
-            elif command.startswith("QUIT"):
-                client_socket.send(b"221 Bye\r\n")
-                break
-            else:
-                client_socket.send(b"500 Command not recognized\r\n")
+#             if command.startswith("EHLO"):
+#                 client_socket.send(b"250 Hello\r\n")
+#             elif command.startswith("MAIL FROM"):
+#                 client_socket.send(b"250 OK\r\n")
+#             elif command.startswith("RCPT TO"):
+#                 client_socket.send(b"250 OK\r\n")
+#             elif command.startswith("DATA"):
+#                 client_socket.send(b"354 Start mail input; end with <CRLF>.<CRLF>\r\n")
+#                 data = client_socket.recv(1024).decode()
+#                 print("Received email data:", data)
+#                 client_socket.send(b"250 OK\r\n")
+#             elif command.startswith("QUIT"):
+#                 client_socket.send(b"221 Bye\r\n")
+#                 break
+#             else:
+#                 client_socket.send(b"500 Command not recognized\r\n")
 
-    except Exception as e:
-        print(f"Error: {e}")
-    finally:
-        client_socket.close()
+#     except Exception as e:
+#         print(f"Error: {e}")
+#     finally:
+#         client_socket.close()
 
-def main():
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind((SERVER_ADDRESS, SMTP_PORT))
-    server.listen(5)
+# def main():
+#     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#     server.bind((SERVER_ADDRESS, SMTP_PORT))
+#     server.listen(5)
 
-    print(f"SMTP Server listening on {SERVER_ADDRESS}:{SMTP_PORT}")
+#     print(f"SMTP Server listening on {SERVER_ADDRESS}:{SMTP_PORT}")
 
-    while True:
-        client_socket, client_address = server.accept()
-        print(f"Accepted connection from {client_address}")
+#     while True:
+#         client_socket, client_address = server.accept()
+#         print(f"Accepted connection from {client_address}")
 
-        client_handler = threading.Thread(target=handle_client, args=(client_socket,))
-        client_handler.start()
+#         client_handler = threading.Thread(target=handle_client, args=(client_socket,))
+#         client_handler.start()
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
 

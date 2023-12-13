@@ -186,7 +186,7 @@
 # client.py
 import socket
 import os
-from config import SERVER_ADDRESS, SMTP_PORT, POP3_PORT, USERNAME, FILTER_RULES
+from config import SERVER_ADDRESS, SMTP_PORT, POP3_PORT, USERNAME, PASSWORD, FILTER_RULES
 
 def send_email(to_address, cc_addresses, bcc_addresses, email_subject, email_body, attachment_paths):
     try:
@@ -223,19 +223,25 @@ def send_email(to_address, cc_addresses, bcc_addresses, email_subject, email_bod
 
         # Xây dựng nội dung email với danh sách người nhận
         
-        if(bcc_addresses):
-            if(cc_addresses):
-                for to_address_item in to_addresses_list_to_cc:
-                    email_content = f"""From: {USERNAME}\r\nTo: {', '.join(to_addresses_list_to_cc)}\r\nSubject: {email_subject}\r\n\r\n{email_body}\r\n"""
+        if bcc_addresses:
+            if to_addresses_list_to_cc:
+                for i in range(len(to_addresses_list_to_cc)):
+                    to_address_item = to_addresses_list_to_cc[i]
+                    to_addresses_list_to_cc_temp = filter(lambda x: x != to_address_item, to_addresses_list_to_cc)
+                    email_content = f"""From: {USERNAME}\r\nTo: {to_address_item}, {', '.join(to_addresses_list_to_cc_temp)}\r\nSubject: {email_subject}\r\n\r\n{email_body}\r\n"""
+                    client.sendall(email_content.encode())
                 for bcc_address in bcc_addresses:
                     email_content = f"""From: {USERNAME}\r\nTo: {bcc_address}\r\nSubject: {email_subject}\r\nBody: {email_body}\r\n"""
+                    client.sendall(email_content.encode())
             else:
                 for to_address_item in to_addresses_list:
                     email_content = f"""From: {USERNAME}\r\nTo: {to_address_item}\r\nSubject: {email_subject}\r\nBody: {email_body}\r\n"""
+                    client.sendall(email_content.encode())
         else:
             for to_address_item in to_addresses_list_to_cc:
                 email_content = f"""From: {USERNAME}\r\nTo: {', '.join(to_addresses_list_to_cc)}\r\nSubject: {email_subject}\r\n\r\n{email_body}\r\n"""
-        client.sendall(email_content.encode())
+                client.sendall(email_content.encode())
+
 
         # Đính kèm các file
         for attachment_path in attachment_paths:
@@ -280,25 +286,71 @@ def send_email(to_address, cc_addresses, bcc_addresses, email_subject, email_bod
     finally:
         client.close()
 
-def retrieve_email():
+def retrieve_email(username, password):
     try:
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client.connect((SERVER_ADDRESS, POP3_PORT))
 
-        # Send POP3 commands
-        client.sendall(b"USER your_username\r\n")
-        client.sendall(b"PASS your_password\r\n")
-        client.sendall(b"RETR 1\r\n")  # Retrieve email by message number
+        # Read previously downloaded UIDLs from a file
+        try:
+            with open("downloaded_uidls.txt", "r") as file:
+                downloaded_uidls = set(file.read().splitlines())
+        except FileNotFoundError:
+            downloaded_uidls = set()
 
-        # Receive and print email data
-        email_data = client.recv(1024).decode()
-        print("Received email data:", email_data)
+        # Send POP3 commands
+        client.sendall(f"USER {username}\r\n".encode())
+        client.sendall(f"PASS {password}\r\n".encode())
+        client.sendall(b"UIDL\r\n")  # Retrieve unique identifiers for each email
+
+        # Receive email UIDL list
+        email_uidl_response = client.recv(1024).decode()
+        print("Received email UIDL list:", email_uidl_response)
+
+        # Check if the response starts with "+OK"
+        if email_uidl_response.startswith("+OK"):
+            # Extract the number of emails using a more robust method
+            email_uidl_lines = email_uidl_response.split("\r\n")
+            num_emails = len(email_uidl_lines) - 2  # Subtract 2 for the "+OK" line and the empty line at the end
+            print("Number of emails:", num_emails)
+
+            # Check if there are any new emails
+            new_uidls = [line.split()[1] for line in email_uidl_lines[1:-1]]
+            new_uidls = set(new_uidls) - downloaded_uidls
+
+            if not new_uidls:
+                print("No new emails to retrieve.")
+                return
+
+            # Retrieve each new email
+            for uidl in new_uidls:
+                client.sendall(f"RETR {uidl}\r\n".encode())
+                email_data = b""
+                while True:
+                    line = client.recv(1024)
+                    if line.strip() == b".":
+                        break
+                    email_data += line
+
+                # Process the email data as needed
+                print(f"Received email {uidl} data:", email_data.decode())
+
+            # Update the downloaded UIDLs file
+            downloaded_uidls.update(new_uidls)
+            with open("downloaded_uidls.txt", "a") as file:
+                for uidl in new_uidls:
+                    file.write(uidl + "\n")
+
+        else:
+            print("Failed to retrieve email UIDL list.")
+            return
 
     except Exception as e:
         print(f"Error: {e}")
 
     finally:
         client.close()
+
 
 def apply_filters(email):
     for rule in FILTER_RULES:
@@ -312,15 +364,15 @@ def apply_filters(email):
             return rule["folder"]
     return "Inbox"  # Nếu không khớp với bất kỳ quy tắc nào, đưa vào thư mục Inbox
 
-# Ví dụ về cách sử dụng
-email_data = {
-    "from": "ahihi@testing.com",
-    "subject": "Urgent report",
-    "body": "Please find the attached report ASAP.",
-}
+    # Ví dụ về cách sử dụng
+    email_data = {
+        "from": "ahihi@testing.com",
+        "subject": "Urgent report",
+        "body": "Please find the attached report ASAP.",
+    }
 
-folder = apply_filters(email_data)
-print(f"Move email to folder: {folder}")
+    folder = apply_filters(email_data)
+    print(f"Move email to folder: {folder}")
 
 
 if __name__ == "__main__":
@@ -344,7 +396,7 @@ if __name__ == "__main__":
 
         elif choice == '2':
             # Lấy email
-            retrieve_email()
+            retrieve_email(USERNAME, PASSWORD)
 
         elif choice == '3':
             print("Exiting program.")
