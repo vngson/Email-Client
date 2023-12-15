@@ -1,192 +1,56 @@
-# import socket
-# import base64
-# import getpass
-# import os
-# from email.mime.text import MIMEText
-# from email.mime.multipart import MIMEMultipart
-# from email.mime.base import MIMEBase
-# from email import encoders
-# import ssl
-# from config import SERVER_ADDRESS, USERNAME, PASSWORD, SMTP_server, SMTP, POP_server, POP3, Autoload
-
-# import warnings
-# warnings.filterwarnings("ignore", category=DeprecationWarning)
-
-# class MailClient:
-#     def __init__(self, SERVER_ADDRESS, USERNAME, PASSWORD, SMTP_server, SMTP, POP_server, POP3, Autoload):
-#         self.server_address = SERVER_ADDRESS
-#         self.username = USERNAME
-#         self.password = PASSWORD
-#         self.stmp_server = SMTP_server 
-#         self.stmp = SMTP 
-#         print(f"Connecting to {self.stmp_server} on port {self.stmp}")
-#         self.pop_server = POP_server
-#         self.pop3 = POP3
-#         self.autoload = Autoload
-#         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#         self.client_socket.connect(SERVER_ADDRESS)
-#         self.run_menu()
-
-#     def run_menu(self):
-#         try:
-#             while True:
-#                 print("\nVui lòng chọn Menu:")
-#                 print("1. Để gửi email")
-#                 print("2. Để xem danh sách các email đã nhận")
-#                 print("3. Để xem nội dung email")
-#                 print("4. Để lọc và di chuyển email")
-#                 print("5. Để thoát")
-#                 choice = input("Nhập lựa chọn của bạn: ")
-
-#                 if choice == '1':
-#                     self.send_email()
-#                 elif choice == '2':
-#                     self.fetch_emails()
-#                 elif choice == '3':
-#                     self.fetch_email_content()
-#                 elif choice == '4':
-#                     self.filter_and_move()
-#                 elif choice == '5':
-#                     self.send_command("QUIT\r\n")
-#                     print("Tạm biệt!")
-#                     break
-#                 else:
-#                     print("Lựa chọn không hợp lệ. Vui lòng thử lại.")
-#         finally:
-#             self.client_socket.close()
-#     def start_tls(self):
-#         try:
-#             self.send_command(f"EHLO {self.stmp_server}\r\n")
-#             response = self.client_socket.recv(1024).decode()
-#             print(response)
-
-#             self.send_command("STARTTLS\r\n")
-#             response = self.client_socket.recv(1024).decode()
-#             print(response)
-
-#             context = ssl.create_default_context()
-#             self.client_socket = context.wrap_socket(self.client_socket, server_hostname=self.stmp_server)
-#         except Exception as e:
-#             print(f"Error starting TLS: {e}")
-    
-#     def send_command(self, command):
-#         self.client_socket.sendall(command.encode())
-#         response = self.client_socket.recv(1024).decode()
-#         print(response)
-
-#     def send_email(self):
-#         # self.start_tls()
-
-#         sender_email = self.username
-#         sender_password = self.password
-#         to_address = input("Enter recipient email address: ")
-#         cc_address = input("Enter CC email address (leave blank if none): ")
-#         bcc_address = input("Enter BCC email address (leave blank if none): ")
-#         email_subject = input("Enter email subject: ")
-#         email_body = input("Enter email body: ")
-
-#         attachment_paths = []
-#         for i in range(3):
-#             attachment = input(f"Enter path to attachment {i + 1} (leave blank if none): ")
-#             if attachment:
-#                 attachment_paths.append(attachment)
-
-#         # # Danh sách file đính kèm
-#         # attachments = self.get_attachments()
-
-#         try:
-#             # Connect to SMTP server
-#             with socket.create_connection((self.stmp_server, self.stmp)) as server_socket:
-#                 server_socket = ssl.wrap_socket(server_socket, ssl_version=ssl.PROTOCOL_TLSv1)
-#                 server_socket.sendall(b"HELO example.com\r\n")
-#                 # ...
-
-#                 # Authenticate
-#                 server_socket.sendall(b"AUTH LOGIN\r\n")
-#                 server_socket.sendall(base64.b64encode(sender_email.encode()) + b"\r\n")
-#                 server_socket.sendall(base64.b64encode(sender_password.encode()) + b"\r\n")
-
-#                 # Compose email
-#                 msg = MIMEMultipart()
-#                 msg["From"] = sender_email
-#                 msg["To"] = to_address
-#                 if cc_address:
-#                     msg["Cc"] = cc_address
-#                 if bcc_address:
-#                     msg["Bcc"] = bcc_address
-#                 msg["Subject"] = email_subject
-#                 msg.attach(MIMEText(email_body, "plain"))
-
-#                 for attachment in attachment_paths:
-#                     with open(attachment, "rb") as file:
-#                         part = MIMEBase('application', 'octet-stream')
-#                         part.set_payload(file.read())
-#                         encoders.encode_base64(part)
-#                         part.add_header('Content-Disposition', f'attachment; filename="{os.path.basename(attachment)}"')
-#                         msg.attach(part)
-
-#                         # Send email
-#                         server_socket.sendall(f"MAIL FROM: {sender_password}\r\n".encode())
-#                         server_socket.sendall(f"RCPT TO: {to_address}\r\n".encode())
-#                         if cc_address:
-#                             server_socket.sendall(f"RCPT TO: {cc_address}\r\n".encode())
-#                         if bcc_address:
-#                             server_socket.sendall(f"RCPT TO: {bcc_address}\r\n".encode())
-#                         server_socket.sendall(b"DATA\r\n")
-#                         server_socket.sendall(msg.as_string().encode())
-#                         server_socket.sendall(b".\r\n")
-
-#                     print("Email sent successfully.")
-#         except Exception as e:
-#             print(f"Error sending email: {e}")
-
-#     def get_attachments(self):
-#         attachments = []
-#         while True:
-#             attachment_path = input("Nhập đường dẫn đến file đính kèm (nhập để bỏ qua): ")
-#             if not attachment_path:
-#                 break
-
-#             # Kiểm tra kích thước file
-#             if os.path.exists(attachment_path) and os.path.getsize(attachment_path) <= (3 * 1024 * 1024):  # 3MB
-#                 attachments.append(attachment_path)
-#             else:
-#                 print("File không tồn tại hoặc vượt quá dung lượng cho phép.")
-
-#             if len(attachments) >= 3:
-#                 print("Đã đạt đến giới hạn số lượng file đính kèm (3).")
-#                 break
-
-#         return attachments
-
-#     def send_attachment(self, attachment_path):
-#         try:
-#             with open(attachment_path, 'rb') as file:
-#                 file_data = base64.b64encode(file.read()).decode()
-#                 self.send_command(f"\r\nAttachment: {os.path.basename(attachment_path)}\r\n{file_data}\r\n")
-#         except FileNotFoundError:
-#             print(f"File {attachment_path} không tồn tại. Vui lòng kiểm tra lại.")
-
-
-#     def fetch_emails(self):
-#         self.send_command("FETCH\r\n")
-
-#     def fetch_email_content(self):
-#         email_id = int(input("Nhập ID của email cần xem: "))
-#         self.send_command(f"FETCH CONTENT {email_id}\r\n")
-
-#     def filter_and_move(self):
-#         criteria = input("Nhập tiêu chí lọc email (contains): ")
-#         keyword = input("Nhập từ khóa lọc: ")
-#         folder = input("Nhập tên thư mục muốn di chuyển: ")
-#         self.send_command(f"FILTER {criteria} {keyword} {folder}\r\n")
-
-# if __name__ == "__main__":
-#     mail_client = MailClient(SERVER_ADDRESS, USERNAME, PASSWORD, SMTP_server, SMTP, POP_server, POP3, Autoload)
-# client.py
 import socket
 import os
-from config import SERVER_ADDRESS, SMTP_PORT, POP3_PORT, USERNAME, PASSWORD, FILTER_RULES
+import re
+import time
+import email.utils
+from config import SERVER_ADDRESS, SMTP_PORT, POP3_PORT, USERNAME, PASSWORD, Autoload, FILTER_RULES, DEFAULT_FOLDER
+
+def send_attachments(client, attachment_paths):
+    # Biến để theo dõi tổng dung lượng của các file đính kèm
+    total_attachment_size = 0
+
+    # Kiểm tra số lượng file và tổng dung lượng
+    max_attachments = 3
+    max_attachment_size = 3 * 1024 * 1024  # 3MB
+
+    # Đính kèm các file
+    for attachment_path in attachment_paths:
+        if max_attachments <= 0 or total_attachment_size >= max_attachment_size:
+            print("Exceeded maximum number of attachments or total size. Ignoring additional attachments.")
+            break
+
+        client.sendall(b"Attachment data:\r\n")
+        if attachment_path:  # Kiểm tra xem có đường dẫn được nhập không
+            try:
+                with open(attachment_path, "rb") as attachment_file:
+                    attachment_data = attachment_file.read()
+                    attachment_filename = os.path.basename(attachment_path)
+                    attachment_size = len(attachment_data)
+
+                    # Kiểm tra kích thước của file
+                    if attachment_size <= max_attachment_size - total_attachment_size:
+                        total_attachment_size += attachment_size
+                    else:
+                        print(f"Error: Exceeded maximum attachment size - {attachment_path}")
+                        continue  # Chuyển đến file đính kèm tiếp theo nếu kích thước vượt quá
+
+                    # Giảm số lượng file còn được phép đính kèm
+                    max_attachments -= 1
+
+                    # Gửi lệnh để bắt đầu đính kèm file
+                    client.sendall(f"Content-Type: application/octet-stream; name={attachment_filename}\r\n".encode())
+                    client.sendall(f"Content-Disposition: attachment; filename={attachment_filename}\r\n".encode())
+                    client.sendall(b"\r\n")
+
+                    # Gửi dữ liệu của file đính kèm
+                    client.sendall(attachment_data)
+
+            except FileNotFoundError:
+                print(f"Error: File not found - {attachment_path}")
+                continue  # Chuyển đến file đính kèm tiếp theo nếu file không tồn tại
+
+    if total_attachment_size == 0:
+        print("No attachment path provided.")
 
 def send_email(to_address, cc_addresses, bcc_addresses, email_subject, email_body, attachment_paths):
     try:
@@ -211,9 +75,10 @@ def send_email(to_address, cc_addresses, bcc_addresses, email_subject, email_bod
         to_addresses_list = [to_address] + cc_addresses + bcc_addresses
         to_addresses_list_to_cc = [to_address] + cc_addresses
         for addr in to_addresses_list:
-            client.send(f"RCPT TO: {addr}\r\n".encode())
-            response = client.recv(1024).decode()
-            print("Server response:", response)
+            if addr:
+                client.send(f"RCPT TO: {addr}\r\n".encode())
+                response = client.recv(1024).decode()
+                print("Server response:", response)
 
         # Gửi lệnh DATA
         print("Sending DATA command...")
@@ -222,49 +87,100 @@ def send_email(to_address, cc_addresses, bcc_addresses, email_subject, email_bod
         print("Server response:", response)
 
         # Xây dựng nội dung email với danh sách người nhận
-        
-        if bcc_addresses:
+        mime_version = "1.0"
+        user_agent = "Your User Agent"
+        content_language = "en-US"
+        content_type = "text/plain"
+        content_transfer_encoding = "quoted-printable"
+
+        if (len(bcc_addresses) != 0):
             if to_addresses_list_to_cc:
                 for i in range(len(to_addresses_list_to_cc)):
+                    msg_id = email.utils.make_msgid()
+                    date = email.utils.formatdate(time.time())
                     to_address_item = to_addresses_list_to_cc[i]
                     to_addresses_list_to_cc_temp = filter(lambda x: x != to_address_item, to_addresses_list_to_cc)
-                    email_content = f"""From: {USERNAME}\r\nTo: {to_address_item}, {', '.join(to_addresses_list_to_cc_temp)}\r\nSubject: {email_subject}\r\n\r\n{email_body}\r\n"""
+                    email_content = f"Message-ID: {msg_id}\r\n"
+                    email_content += f"Date: {date}\r\n"
+                    email_content += f"MIME-version: {mime_version}\r\n"
+                    email_content += f"User-Agent: {user_agent}\r\n"
+                    email_content += f"Content-Language: {content_language}\r\n"
+                    email_content += f"To: {to_address_item}, {', '.join(to_addresses_list_to_cc_temp)}\r\n"
+                    email_content += f"From: {USERNAME}\r\n"
+                    email_content += f"Subject: {email_subject}\r\n"
+                    email_content += f"Content-type: {content_type}\r\n"
+                    email_content += f"Content-Transfer-Encoding: {content_transfer_encoding}\r\n"
+                    email_content += f"Body:\r\n {email_body}\r\n\r\n"
                     client.sendall(email_content.encode())
                 for bcc_address in bcc_addresses:
-                    email_content = f"""From: {USERNAME}\r\nTo: {bcc_address}\r\nSubject: {email_subject}\r\nBody: {email_body}\r\n"""
+                    msg_id = email.utils.make_msgid()
+                    date = email.utils.formatdate(time.time())
+                    email_content = f"Message-ID: {msg_id}\r\n"
+                    email_content += f"Date: {date}\r\n"
+                    email_content += f"MIME-version: {mime_version}\r\n"
+                    email_content += f"User-Agent: {user_agent}\r\n"
+                    email_content += f"Content-Language: {content_language}\r\n"
+                    email_content += f"To: {bcc_address}\r\n"
+                    email_content += f"From: {USERNAME}\r\n"
+                    email_content += f"Subject: {email_subject}\r\n"
+                    email_content += f"Content-type: {content_type}\r\n"
+                    email_content += f"Content-Transfer-Encoding: {content_transfer_encoding}\r\n"
+                    email_content += f"Body:\r\n {email_body}\r\n\r\n"
                     client.sendall(email_content.encode())
             else:
                 for to_address_item in to_addresses_list:
-                    email_content = f"""From: {USERNAME}\r\nTo: {to_address_item}\r\nSubject: {email_subject}\r\nBody: {email_body}\r\n"""
+                    msg_id = email.utils.make_msgid()
+                    date = email.utils.formatdate(time.time())
+                    email_content = f"Message-ID: {msg_id}\r\n"
+                    email_content += f"Date: {date}\r\n"
+                    email_content += f"MIME-version: {mime_version}\r\n"
+                    email_content += f"User-Agent: {user_agent}\r\n"
+                    email_content += f"Content-Language: {content_language}\r\n"
+                    email_content += f"To: {to_address_item}\r\n"
+                    email_content += f"From: {USERNAME}\r\n"
+                    email_content += f"Subject: {email_subject}\r\n"
+                    email_content += f"Content-type: {content_type}\r\n"
+                    email_content += f"Content-Transfer-Encoding: {content_transfer_encoding}\r\n"
+                    email_content += f"Body:\r\n {email_body}\r\n\r\n"
                     client.sendall(email_content.encode())
         else:
-            for to_address_item in to_addresses_list_to_cc:
-                email_content = f"""From: {USERNAME}\r\nTo: {', '.join(to_addresses_list_to_cc)}\r\nSubject: {email_subject}\r\n\r\n{email_body}\r\n"""
+            if (len(cc_addresses) != 0):
+                for i in range(len(to_addresses_list_to_cc)):
+                    msg_id = email.utils.make_msgid()
+                    date = email.utils.formatdate(time.time())
+                    to_address_item = to_addresses_list_to_cc[i]
+                    to_addresses_list_to_cc_temp = filter(lambda x: x != to_address_item, to_addresses_list_to_cc)
+                    email_content = f"Message-ID: {msg_id}\r\n"
+                    email_content += f"Date: {date}\r\n"
+                    email_content += f"MIME-version: {mime_version}\r\n"
+                    email_content += f"User-Agent: {user_agent}\r\n"
+                    email_content += f"Content-Language: {content_language}\r\n"
+                    email_content += f"To: {to_address_item}, {', '.join(to_addresses_list_to_cc_temp)}\r\n"
+                    email_content += f"From: {USERNAME}\r\n"
+                    email_content += f"Subject: {email_subject}\r\n"
+                    email_content += f"Content-type: {content_type}\r\n"
+                    email_content += f"Content-Transfer-Encoding: {content_transfer_encoding}\r\n"
+                    email_content += f"Body:\r\n {email_body}\r\n\r\n"""
+                    client.sendall(email_content.encode())
+            else:
+                msg_id = email.utils.make_msgid()
+                date = email.utils.formatdate(time.time())
+                email_content = f"Message-ID: {msg_id}\r\n"
+                email_content += f"Date: {date}\r\n"
+                email_content += f"MIME-version: {mime_version}\r\n"
+                email_content += f"User-Agent: {user_agent}\r\n"
+                email_content += f"Content-Language: {content_language}\r\n"
+                email_content += f"To: {to_address}\r\n"
+                email_content += f"From: {USERNAME}\r\n"
+                email_content += f"Subject: {email_subject}\r\n"
+                email_content += f"Content-type: {content_type}\r\n"
+                email_content += f"Content-Transfer-Encoding: {content_transfer_encoding}\r\n"
+                email_content += f"Body:\r\n {email_body}\r\n\r\n"
                 client.sendall(email_content.encode())
 
 
         # Đính kèm các file
-        for attachment_path in attachment_paths:
-            client.sendall(b"Attachment data:\r\n")
-            if attachment_path:  # Kiểm tra xem có đường dẫn được nhập không
-                try:
-                    with open(attachment_path, "rb") as attachment_file:
-                        attachment_data = attachment_file.read()
-                        attachment_filename = os.path.basename(attachment_path)
-
-                        # Gửi lệnh để bắt đầu đính kèm file
-                        client.sendall(f"Content-Type: application/octet-stream; name={attachment_filename}\r\n".encode())
-                        client.sendall(f"Content-Disposition: attachment; filename={attachment_filename}\r\n".encode())
-                        client.sendall(b"\r\n")
-
-                        # Gửi dữ liệu của file đính kèm
-                        client.sendall(attachment_data)
-
-                except FileNotFoundError:
-                    print(f"Error: File not found - {attachment_path}")
-                    break  # Thoát khỏi vòng lặp nếu có lỗi
-            else:
-                print("No attachment path provided.")
+        send_attachments(client, attachment_paths)
 
         # Kết thúc dữ liệu email
         print("Sending end-of-email command...")
@@ -277,6 +193,7 @@ def send_email(to_address, cc_addresses, bcc_addresses, email_subject, email_bod
         client.send(b"QUIT\r\n")
         response = client.recv(1024).decode()
         print("Server response:", response)
+        client.close()
         if "500" in response:
             print("Server returned an error:", response)
 
@@ -286,64 +203,42 @@ def send_email(to_address, cc_addresses, bcc_addresses, email_subject, email_bod
     finally:
         client.close()
 
-def retrieve_email(username, password):
+def retrieve_email_and_retrieve_specific_emails(username, password):
     try:
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client.connect((SERVER_ADDRESS, POP3_PORT))
 
-        # Read previously downloaded UIDLs from a file
-        try:
-            with open("downloaded_uidls.txt", "r") as file:
-                downloaded_uidls = set(file.read().splitlines())
-        except FileNotFoundError:
-            downloaded_uidls = set()
-
         # Send POP3 commands
         client.sendall(f"USER {username}\r\n".encode())
         client.sendall(f"PASS {password}\r\n".encode())
-        client.sendall(b"UIDL\r\n")  # Retrieve unique identifiers for each email
+        client.sendall(b"LIST\r\n") # Retrieve a summary of all messages
 
-        # Receive email UIDL list
-        email_uidl_response = client.recv(1024).decode()
-        print("Received email UIDL list:", email_uidl_response)
+        # Receive the response to the LIST command
+        list_response = b""
+        while True:
+            line = client.recv(1024)
+            list_response += line
+            if line.endswith(b".\r\n"):
+                break
 
-        # Check if the response starts with "+OK"
-        if email_uidl_response.startswith("+OK"):
-            # Extract the number of emails using a more robust method
-            email_uidl_lines = email_uidl_response.split("\r\n")
-            num_emails = len(email_uidl_lines) - 2  # Subtract 2 for the "+OK" line and the empty line at the end
-            print("Number of emails:", num_emails)
+        # Process the list response as needed
+        print("Received email list:", list_response.decode())
 
-            # Check if there are any new emails
-            new_uidls = [line.split()[1] for line in email_uidl_lines[1:-1]]
-            new_uidls = set(new_uidls) - downloaded_uidls
+        # Get mail with index in above list
+        email_index = input("Mail index from above list: ") # replace with the actual email index
+        client.send(f'RETR {email_index}\r\n'.encode())
+        email_data = client.recv(1024)
+        if isinstance(email_data, bytes):
+            email_data = email_data.decode('utf-8')
+        print(email_data)
+        #You may need to implement a function to extract email information (e.g., sender, subject, body) from email_data
+        email = process_email_data(email_data)
+        mark_email_as_read(email_index)
+        # Apply filters and classify email
+        folder = move_email_to_folder(email)
 
-            if not new_uidls:
-                print("No new emails to retrieve.")
-                return
-
-            # Retrieve each new email
-            for uidl in new_uidls:
-                client.sendall(f"RETR {uidl}\r\n".encode())
-                email_data = b""
-                while True:
-                    line = client.recv(1024)
-                    if line.strip() == b".":
-                        break
-                    email_data += line
-
-                # Process the email data as needed
-                print(f"Received email {uidl} data:", email_data.decode())
-
-            # Update the downloaded UIDLs file
-            downloaded_uidls.update(new_uidls)
-            with open("downloaded_uidls.txt", "a") as file:
-                for uidl in new_uidls:
-                    file.write(uidl + "\n")
-
-        else:
-            print("Failed to retrieve email UIDL list.")
-            return
+        # Print the folder where the email is classified
+        print(f"Email index: {email_index} classified into folder: {folder}")
 
     except Exception as e:
         print(f"Error: {e}")
@@ -351,44 +246,146 @@ def retrieve_email(username, password):
     finally:
         client.close()
 
+def only_retrieve_email(username, password):
+    try:
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect((SERVER_ADDRESS, POP3_PORT))
 
-def apply_filters(email):
+        # Send POP3 commands
+        client.sendall(f"USER {username}\r\n".encode())
+        client.sendall(f"PASS {password}\r\n".encode())
+        client.sendall(b"LIST\r\n") # Retrieve a summary of all messages
+
+        # Receive the response to the LIST command
+        list_response = b""
+        while True:
+            line = client.recv(1024)
+            list_response += line
+            if line.endswith(b".\r\n"):
+                break
+
+        # Process the list response as needed
+        print("Received email list:", list_response.decode())
+
+    except Exception as e:
+        print(f"Error: {e}")
+
+    finally:
+        client.close()
+
+def process_email_data(email_data):
+    from_regex = re.compile(r'From: (.+)')
+    to_regex = re.compile(r'To: (.+)')
+    subject_regex = re.compile(r'Subject: (.+)')
+    body_regex = re.compile(r'Body:(.+?)Attachment data:', re.DOTALL)
+    
+    # Use regular expressions to find matches
+    from_match = from_regex.search(email_data)
+    to_match = to_regex.search(email_data)
+    subject_match = subject_regex.search(email_data)
+    body_match = body_regex.search(email_data)
+    
+    # Extract data from matches
+    from_address = from_match.group(1) if from_match else None
+    to_address = to_match.group(1) if to_match else None
+    subject = subject_match.group(1) if subject_match else None
+    body = body_match.group(1) if body_match else None
+
+    email_info = {"from": from_address, "to": to_address, "subject": subject, "body": body}
+
+    return email_info
+
+def move_email_to_folder(email):
+    folder_name = DEFAULT_FOLDER;
+    subject_content = email["subject"]
+    body_content = email["body"]
     for rule in FILTER_RULES:
-        if rule["type"] == "from" and any(sender in email["from"] for sender in rule["addresses"]):
-            return rule["folder"]
-        elif rule["type"] == "subject" and any(keyword in email["subject"] for keyword in rule["keywords"]):
-            return rule["folder"]
-        elif rule["type"] == "content" and any(keyword in email["body"] for keyword in rule["keywords"]):
-            return rule["folder"]
-        elif rule["type"] == "spam" and (any(keyword in email["subject"] for keyword in rule["keywords"]) or any(keyword in email["body"] for keyword in rule["keywords"])):
-            return rule["folder"]
-    return "Inbox"  # Nếu không khớp với bất kỳ quy tắc nào, đưa vào thư mục Inbox
+        if rule["type"] == "spam":
+            for keyword in rule["keywords"]:
+                keyword_in_subject = keyword.lower() in subject_content.lower()
+                keyword_in_body = keyword.lower() in body_content.lower()
+                
+                if keyword_in_subject or keyword_in_body:
+                    folder_name = rule["folder"]
+        else:
+            if rule["type"] == "from" and any(address.lower() in email["from"].lower() for address in rule.get("addresses", [])):
+                folder_name = rule["folder"]
+            elif rule["type"] == "to" and any(address.lower() in email["to"].lower() for address in rule.get("addresses", [])):
+                folder_name = rule["folder"]
+            elif rule["type"] == "subject" and any(keyword.lower() in subject_content.lower() for keyword in rule.get("keywords", [])):
+                folder_name = rule["folder"]
+            elif rule["type"] == "content":
+                if body_content is not None and any(keyword.lower() in body_content.lower() for keyword in rule.get("keywords", [])):
+                    folder_name = rule["folder"]
 
-    # Ví dụ về cách sử dụng
-    email_data = {
-        "from": "ahihi@testing.com",
-        "subject": "Urgent report",
-        "body": "Please find the attached report ASAP.",
-    }
+        
+    return folder_name
 
-    folder = apply_filters(email_data)
-    print(f"Move email to folder: {folder}")
 
+def mark_email_as_read(email_index):
+    try:
+        # Check if the email has already been marked as read
+        if check_email_read_status(email_index):
+            return
+
+        with open("email_states.txt", "a") as state_file:
+            # Mark the email as read and write to the file
+            state_file.write(f"{email_index} Read\n")
+
+        print(f"Email {email_index} marked as read.")
+
+    except Exception as e:
+        print(f"Error marking email as read: {e}")
+
+def check_email_read_status(email_index):
+    try:
+        with open("email_states.txt", "r") as state_file:
+            for line in state_file:
+                parts = line.split()
+                if len(parts) == 2 and parts[0] == email_index:
+                    print("Email has been read")
+                    return True  # Email đã được đọc
+        
+        print("Email has not been read")
+        return False  # Email chưa được đọc
+
+    except FileNotFoundError:
+        return False  # File không tồn tại, giả sử email chưa được đọc
+    except Exception as e:
+        print(f"Error checking email status: {e}")
+        return False
+
+
+def email_automatic_download():
+    check = True;
+    while check:
+        only_retrieve_email(USERNAME, PASSWORD)
+        check_stop = input("Press Enter to stop auto-retrieving...")
+        if check_stop:
+            check = False;
+        time.sleep(10)
 
 if __name__ == "__main__":
+
     while True:
         print("Menu:")
         print("1. Send Email")
         print("2. Retrieve Email")
-        print("3. Exit")
+        print("3. Enable/Disable Auto Retrieve Email")
+        print("4. Exit")
 
-        choice = input("Enter your choice (1, 2, or 3): ")
+        choice = input("Enter your choice (1, 2, 3 or 4): ")
 
         if choice == '1':
             # Nhập thông tin và gửi email
             to_address = input("To address: ")
-            cc_addresses = input("CC addresses (comma-separated, optional): ").split(',')
-            bcc_addresses = input("BCC addresses (comma-separated, optional): ").split(',')
+            cc_addresses_input = input("CC addresses (comma-separated, optional): ")
+            bcc_addresses_input = input("BCC addresses (comma-separated, optional): ")
+
+            # Kiểm tra nếu người dùng không nhập gì thì gán danh sách rỗng
+            cc_addresses = cc_addresses_input.split(',') if cc_addresses_input else []
+            bcc_addresses = bcc_addresses_input.split(',') if bcc_addresses_input else []
+
             email_subject = input("Email subject: ")
             email_body = input("Email body: ")
             attachment_paths = input("Attachment paths (comma-separated, optional): ").split(',')
@@ -396,14 +393,14 @@ if __name__ == "__main__":
 
         elif choice == '2':
             # Lấy email
-            retrieve_email(USERNAME, PASSWORD)
+            retrieve_email_and_retrieve_specific_emails(USERNAME, PASSWORD)
 
         elif choice == '3':
+            email_automatic_download()
+
+        elif choice == '4':
             print("Exiting program.")
             break
 
         else:
             print("Invalid choice. Please enter 1, 2, or 3.")
-
-
-
